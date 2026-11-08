@@ -18,7 +18,7 @@ I'm learning SQL by answering real business questions on 49,593 appointment reco
   <tr><td><b>The question</b></td><td>Which appointments get missed, and what can the data honestly tell a clinic about why?</td></tr>
   <tr><td><b>The data</b></td><td>49,593 appointments · 26 columns · 20 Jun 2016 – 25 Feb 2022</td></tr>
   <tr><td><b>Tools</b></td><td>SQL (SQLite) in DB Browser for SQLite · Git and GitHub</td></tr>
-  <tr><td><b>Status</b></td><td>Exploration and data-quality checks in progress · 54 queries so far</td></tr>
+  <tr><td><b>Status</b></td><td>Exploration and data-quality checks in progress · 55 queries so far</td></tr>
   <tr><td><b>Headline so far</b></td><td>Among full years, the no-show rate nearly doubled: about 8% in 2017–18 → 15.1% in 2021 <i>(preliminary, still being checked)</i></td></tr>
 </table>
 
@@ -254,7 +254,7 @@ Using only full years with enough appointments, the rate **nearly doubled**, fro
 
 **4. Gender shows a small gap:** female patients 10.3% vs male patients 9.6%. This compares all female and male patients of every age, not only adults.
 
-**5. Hot days show no clear difference:** 10.0% on days with an average temperature of 25 or more vs 9.7% on other days. Hot days are a small group, so this comparison is weak.
+**5. Hot days show no clear difference:** 10.0% on days with an average temperature of 25 or more vs 9.7% on other days. Hot days are only 1,963 appointments (4.0%), so this comparison is weak.
 
 **6. Large cities are similar:** every city with more than 2,000 appointments sits between 7.4% and 10.5%.
 
@@ -269,7 +269,7 @@ Using only full years with enough appointments, the rate **nearly doubled**, fro
 - **Month names** (`sept`, `apr`, …) sort alphabetically, not in calendar order.
 - **No-show reasons** are free text in Portuguese:
   - Exact matching undercounts. "doente" (sick) is 197 with an exact match vs 257 with `LIKE '%doente%'`, and "transporte" is 191 vs 205.
-  - Many no-shows seem to have no reason recorded at all. I still need a dedicated query to count them.
+  - **3,155 of 4,832 no-shows (65.3%) have no reason recorded**, so the reasons describe only about a third of missed appointments.
   - Some entries describe clinic-side cancellations, not patients missing appointments.
 - **Partial years:** the data runs from 20 Jun 2016 to 25 Feb 2022.
 
@@ -279,7 +279,6 @@ Using only full years with enough appointments, the rate **nearly doubled**, fro
 - **Why** are appointments with missing details missed more often?
 - Do **specialty** no-show rates differ meaningfully?
 - **Age groups:** no age recorded 12.9%, 60 and over 10.0%, under 60 8.8%. The "60 and over" group includes the 84 ages above 100, so it needs recalculating without them before I compare age groups.
-- How many no-shows have **no reason** recorded?
 - Do **time of day**, **rain** or **storms the day before** relate to no-shows?
 
 ---
