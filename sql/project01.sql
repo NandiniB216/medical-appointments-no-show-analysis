@@ -220,7 +220,7 @@ GROUP BY age_group;
 SELECT MIN(average_temp_day), MAX(average_temp_day), AVG(average_temp_day)
 FROM appointments;
 
--- Label each appointment 'hot' (25 or more) or 'not hot', with counts.
+-- Label each appointment 'hot' (25 or more) or 'not hot', with counts.  -- hot 1,963 · not hot 47,630
 SELECT CASE WHEN average_temp_day >= 25 THEN 'hot'
             ELSE 'not hot'
        END AS label,
@@ -302,6 +302,13 @@ WHERE no_show_reason LIKE '%doente%';
 SELECT COUNT(*)
 FROM appointments
 WHERE CAST(age AS REAL) BETWEEN 60 AND 100;
+
+-- No-shows with no reason recorded (empty or only spaces). -- 3,155 of 4,832 (65.3%)
+-- (Check query given by my tutor on 8 Nov, not yet written on my own.)
+SELECT COUNT(*)
+FROM appointments
+WHERE no_show = 'yes'
+  AND (no_show_reason IS NULL OR TRIM(no_show_reason) = '');
 
 
 -- ---------- 9. Fixing TEXT dates (substr and ||) ----------
