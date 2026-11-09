@@ -1,0 +1,7 @@
+# Keep the dataset out of this repository (download it from the source link in the README)
+*.db
+*.sqlite
+*.sqlite3
+
+# Mac system files
+.DS_Store
