@@ -146,7 +146,6 @@ ORDER BY COUNT(*) DESC;
 -- ---------- 5. AVG, MIN, MAX and CAST (age is stored as TEXT) ----------
 
 -- Average age.                                           -- 18.5
--- (To re-run: my first attempt had no CAST.)
 SELECT AVG(CAST(age AS REAL))
 FROM appointments;
 
@@ -160,7 +159,7 @@ SELECT MIN(CAST(age AS REAL)), MAX(CAST(age AS REAL))
 FROM appointments;
 
 -- Count the appointments where age is greater than 100.  -- 84
--- (To re-run with this corrected query. 84 matches 3,560 seniors − 3,476 aged 60–100.)
+
 SELECT COUNT(*)
 FROM appointments
 WHERE CAST(age AS REAL) > 100;
