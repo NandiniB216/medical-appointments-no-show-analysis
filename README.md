@@ -70,7 +70,7 @@ These are the questions I'm **investigating**. A status here doesn't mean the an
 
 ## Dataset
 
-**Source:** [Medical Appointments No-Show](https://doi.org/10.17632/wm6w2fvkfj.1), Luiz Henrique Salazar, Mendeley Data, version 1 (2023). Licence: CC BY 4.0.
+**Source:** [Medical Appointments No-Show](https://doi.org/10.17632/wm6w2fvkfj.1), Luiz Henrique Salazar, Mendeley Data, version 1 (2023). Licence: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 **From the dataset page:** records from the Center of Specialization in Physical and Intellectual Rehabilitation (CER) at the University of Vale do Itajaí, an outpatient rehabilitation clinic serving Brazil's public health system, combined with ICD codes and weather data.
 
 - **49,593 rows** (one row = one appointment) · **26 columns** · one table, `appointments`
@@ -90,7 +90,7 @@ Meanings marked *(from the name)* are my reading of the column name and haven't 
 | `appointment_month` | Month | Stored as names (e.g. `sept`), which sort alphabetically |
 | `appointment_year` | Year | 2016–2022; 2016 and 2022 are partial years |
 | `appointment_shift` | `morning` / `afternoon` | Checked |
-| `specialty` | Therapy area | 7,454 empty; values partly in Portuguese |
+| `specialty` | Therapy area | 7,454 empty (`NULL`), plus 57 filled in as `sem especialidade` ("no specialty"); values partly in Portuguese |
 | `no_show` | `yes` = missed, `no` = attended | Lowercase only; 4,832 `yes` |
 | `no_show_reason` | Reason recorded for a missed appointment | Free text in Portuguese, with many different spellings |
 | `gender` | `M` / `F` / `I` | 7 rows are `I` |
@@ -117,7 +117,7 @@ Meanings marked *(from the name)* are my reading of the column name and haven't 
 **Limitations I keep in mind**
 
 - **No patient ID.** Every count is a count of *appointments*, not patients.
-- **Missing values.** No specialty: 7,454 · no age: 10,350 · no city: 5,181. Only 34,723 rows (70%) have both a specialty and an age.
+- **Missing values.** No specialty: 7,454 empty, plus 57 marked `sem especialidade` · no age: 10,350 · no city: 5,181. Only 34,723 rows (70%) have both a specialty value and an age. That count uses `IS NOT NULL`, so it still includes the 57 `sem especialidade` rows.
 - **Numbers and dates stored as text.** These need `CAST` and rebuilding before they behave.
 - **Free-text reasons** in Portuguese, with many spellings.
 - **Partial years.** 2016 starts on 20 June and 2022 ends on 25 February; 2020 has only 904 appointments.
@@ -160,7 +160,7 @@ A query existing in [`sql/project01.sql`](sql/project01.sql) doesn't mean I can 
 | Rates: `SUM(CASE …) * 100.0 / COUNT(*)` | No-show rate by year, gender, city, age group | 🔄 |
 | Rebuilding text dates as `YYYY-MM-DD` | Finding the first and last dates | 🔄 |
 | `GROUP BY` on two columns | Year × specialty check | ⬜ |
-| `COALESCE`, `TRIM`, `LOWER`, `REPLACE` | Cleaning text values | ⬜ |
+| `COALESCE`, `TRIM`, `LOWER`, `REPLACE` | Cleaning text values (`TRIM` appears once, in a check query my tutor gave me) | ⬜ |
 | Finding duplicates | Data-quality checks | ⬜ |
 | `JOIN`s | After building small lookup tables | ⬜ |
 | Subqueries and CTEs | Multi-step questions | ⬜ |
@@ -171,7 +171,7 @@ A query existing in [`sql/project01.sql`](sql/project01.sql) doesn't mean I can 
 **Honest note:** rates are the core calculation in this project, and I haven't passed a solo test on them yet. My one solo attempt gave a wrong answer, and the rate queries in the file were written with guidance. That's my next learning goal.
 
 <details>
-<summary><b>Example 1: the no-show rate per year</b></summary>
+<summary><b>Example 1: the no-show rate per year</b> (written with guidance)</summary>
 <br>
 
 ```sql
@@ -191,7 +191,7 @@ ORDER BY appointment_year ASC;
 </details>
 
 <details>
-<summary><b>Example 2: fixing dates stored as text</b></summary>
+<summary><b>Example 2: fixing dates stored as text</b> (built with guidance)</summary>
 <br>
 
 Sorting the raw `DD/MM/YYYY` text put **31/10/2019** at the top as the "latest" date, because SQL compared the day first. Rebuilding each date as `YYYY-MM-DD` fixed the order and showed where the data really ends:
@@ -217,6 +217,7 @@ LIMIT 5;
 ```
 medical-appointments-no-show-analysis/
 ├── README.md            ← this page
+├── GIT_WORKFLOW.md      ← how I make and review changes (branch → commit → pull request)
 ├── assets/
 │   ├── banner.svg       ← header image
 │   └── workflow.svg     ← project workflow diagram
@@ -252,7 +253,7 @@ Using only full years with enough appointments, the rate **nearly doubled**, fro
 
 **3. Shift makes little difference:** afternoon 9.9% (2,762 of 27,865) vs morning 9.5% (2,070 of 21,728).
 
-**4. Gender shows a small gap:** female patients 10.3% vs male patients 9.6%. This compares all female and male patients of every age, not only adults.
+**4. Gender shows a small gap:** 10.3% of appointments for female patients were missed vs 9.6% for male patients. This covers patients of every age, not only adults, and counts appointments, not people.
 
 **5. Hot days show no clear difference:** 10.0% on days with an average temperature of 25 or more vs 9.7% on other days. Hot days are only 1,963 appointments (4.0%), so this comparison is weak.
 
@@ -263,12 +264,12 @@ Using only full years with enough appointments, the rate **nearly doubled**, fro
 ### Data-quality observations
 
 - **Specialty** is empty for 7,454 appointments, plus 57 marked `sem especialidade` ("no specialty").
-- **Age** is empty for 10,350 appointments (21%), and 84 ages are above 100 (up to 110), which is likely an error.
+- **Age** is empty for 10,350 appointments (21%), and 84 ages are above 100 (up to 110). These are probably data-entry errors, but I haven't checked them against `date_of_birth` yet.
 - **City** is empty for 5,181 appointments (10%).
 - **Text-stored values give wrong answers until fixed.** `MIN`/`MAX` on the text age returned 10 and 91 instead of 2 and 110. Sorting raw dates put 31/10/2019 as the latest date.
 - **Month names** (`sept`, `apr`, …) sort alphabetically, not in calendar order.
 - **No-show reasons** are free text in Portuguese:
-  - Exact matching undercounts. "doente" (sick) is 197 with an exact match vs 257 with `LIKE '%doente%'`, and "transporte" is 191 vs 205.
+  - Exact matching undercounts. "doente" (sick) is 197 with an exact match vs 257 with `LIKE '%doente%'`, and "sem transporte" (no transport) is 191 with an exact match vs 205 with `LIKE '%transporte%'`.
   - **3,155 of 4,832 no-shows (65.3%) have no reason recorded**, so the reasons describe only about a third of missed appointments.
   - Some entries describe clinic-side cancellations, not patients missing appointments.
 - **Partial years:** the data runs from 20 Jun 2016 to 25 Feb 2022.
@@ -322,4 +323,4 @@ Using only full years with enough appointments, the rate **nearly doubled**, fro
 **Nandini Bhati**: aspiring Business and Product Analyst · BBA (FinTech), CHRIST University<br>
 [GitHub](https://github.com/NandiniB216) · [LinkedIn](https://linkedin.com/in/nandini-bhati)
 
-<sub>**How this project is made:** I'm learning SQL through hands-on project work with AI assistance (Claude as a tutor). I run every query myself in DB Browser for SQLite. Some queries were written with guidance, and the SQL progress table separates those from the ones I've written on my own. A few lines in the SQL file were corrected after an AI review in November 2026. This README and its images were drafted with AI help and checked against my own query results.</sub>
+<sub>**How this project is made:** I'm learning SQL through hands-on project work with AI assistance (Claude as a tutor). I run every query myself in DB Browser for SQLite. Some queries were written with guidance, and the SQL progress table separates those from the ones I've written on my own. A few lines in the SQL file were corrected after an AI review in November 2026. This README, its images and the Git workflow guide were drafted with AI help and checked against my own query results.</sub>

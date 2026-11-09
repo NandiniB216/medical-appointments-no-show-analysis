@@ -2,8 +2,14 @@
 -- Medical Appointments No-Show Analysis — my SQL queries
 -- Tool: DB Browser for SQLite · Table: appointments (49,593 rows)
 -- Data: Medical Appointments No-Show (Salazar, Mendeley Data v1), 20 Jun 2016 – 25 Feb 2022
--- Written by me while learning SQL (7–8 Nov 2026) with an AI tutor.
--- Some queries were guided. Corrections on 8 Nov came from an AI review.
+-- Typed and run by me while learning SQL (7–8 Nov 2026) with an AI tutor.
+-- Not every query is independent work. Written with guidance so far:
+--   * every no-show rate query in section 7 (no solo pass on rates yet)
+--   * the IS NOT NULL query in section 8 (fixed after a hint)
+--   * the full YYYY-MM-DD date queries in section 9 (built with a skeleton)
+--   * the no-reason check in section 8 (given by my tutor)
+-- The README's SQL progress table shows which concepts I've passed on my own.
+-- Corrections on 8 Nov came from an AI review.
 -- =====================================================================
 
 
@@ -140,6 +146,7 @@ ORDER BY COUNT(*) DESC;
 -- ---------- 5. AVG, MIN, MAX and CAST (age is stored as TEXT) ----------
 
 -- Average age.                                           -- 18.5
+-- (To re-run: my first attempt had no CAST.)
 SELECT AVG(CAST(age AS REAL))
 FROM appointments;
 
@@ -153,6 +160,7 @@ SELECT MIN(CAST(age AS REAL)), MAX(CAST(age AS REAL))
 FROM appointments;
 
 -- Count the appointments where age is greater than 100.  -- 84
+-- (To re-run with this corrected query. 84 matches 3,560 seniors − 3,476 aged 60–100.)
 SELECT COUNT(*)
 FROM appointments
 WHERE CAST(age AS REAL) > 100;
