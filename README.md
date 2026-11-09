@@ -18,7 +18,7 @@ I'm learning SQL by answering real business questions on 49,593 appointment reco
   <tr><td><b>The question</b></td><td>Which appointments get missed, and what can the data honestly tell a clinic about why?</td></tr>
   <tr><td><b>The data</b></td><td>49,593 appointments · 26 columns · 20 Jun 2016 – 25 Feb 2022</td></tr>
   <tr><td><b>Tools</b></td><td>SQL (SQLite) in DB Browser for SQLite · Git and GitHub</td></tr>
-  <tr><td><b>Status</b></td><td>Exploration and data-quality checks in progress · 55 queries so far</td></tr>
+  <tr><td><b>Status</b></td><td>Exploration and data-quality checks in progress · 73 queries so far</td></tr>
   <tr><td><b>Headline so far</b></td><td>Among full years, the no-show rate nearly doubled: about 8% in 2017–18 → 15.1% in 2021 <i>(preliminary, still being checked)</i></td></tr>
 </table>
 
@@ -156,12 +156,15 @@ A query existing in [`sql/project01.sql`](sql/project01.sql) doesn't mean I can 
 | `IN`, `LIKE`, `BETWEEN` | Free-text reasons; ages 60–100 | ✅ |
 | `substr` | Cutting the day out of a text date | ✅ |
 | `\|\|` (joining text) | Joining shift and no-show status | ✅ |
-| `IS NOT NULL` | Rows with both specialty and age (fixed after a hint) | 🔄 |
+| `IS NOT NULL` | Leaving out missing birth dates in a repeat-visit check | ✅ |
 | Rates: `SUM(CASE …) * 100.0 / COUNT(*)` | No-show rate by year, gender, city, age group | 🔄 |
 | Rebuilding text dates as `YYYY-MM-DD` | Finding the first and last dates | 🔄 |
-| `GROUP BY` on two columns | Year × specialty check | ⬜ |
-| `COALESCE`, `TRIM`, `LOWER`, `REPLACE` | Cleaning text values (`TRIM` appears once, in a check query my tutor gave me) | ⬜ |
-| Finding duplicates | Data-quality checks | ⬜ |
+| `GROUP BY` on two columns | Shift × no-show, city × no-show (year × specialty check still to do) | ✅ |
+| `TRIM`, `LOWER` | The 341 reason spellings stay 341 after cleaning | ✅ |
+| `REPLACE` | Turning `B.` into `BALNEARIO` in city names | ✅ |
+| `COALESCE` | Showing empty cities as their own group (cold retry still to do) | 🔄 |
+| `CASE WHEN` for recoding | NULL and 'sem especialidade' grouped as 'no specialty' | 🔄 |
+| Finding duplicates | Possible double bookings; same-day repeats | ✅ |
 | `JOIN`s | After building small lookup tables | ⬜ |
 | Subqueries and CTEs | Multi-step questions | ⬜ |
 | Window functions | Rankings and running totals | ⬜ |
