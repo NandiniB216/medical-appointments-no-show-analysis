@@ -2,12 +2,13 @@
 -- Medical Appointments No-Show Analysis — my SQL queries
 -- Tool: DB Browser for SQLite · Table: appointments (49,593 rows)
 -- Data: Medical Appointments No-Show (Salazar, Mendeley Data v1), 20 Jun 2016 – 25 Feb 2022
--- Typed and run by me while learning SQL (7–8 Nov 2026) with an AI tutor.
+-- Typed and run by me while learning SQL (7–9 Nov 2026) with an AI tutor.
 -- Not every query is independent work. Written with guidance so far:
 --   * every no-show rate query in section 7 (no solo pass on rates yet)
 --   * the IS NOT NULL query in section 8 (fixed after a hint)
 --   * the full YYYY-MM-DD date queries in section 9 (built with a skeleton)
 --   * the no-reason check in section 8 (given by my tutor)
+-- From section 10 on, each query is tagged [solo] or [guided] and has its tracker ID (EX-0xx).
 -- The README's SQL progress table shows which concepts I've passed on my own.
 -- Corrections on 8 Nov came from an AI review.
 -- =====================================================================
@@ -159,7 +160,6 @@ SELECT MIN(CAST(age AS REAL)), MAX(CAST(age AS REAL))
 FROM appointments;
 
 -- Count the appointments where age is greater than 100.  -- 84
-
 SELECT COUNT(*)
 FROM appointments
 WHERE CAST(age AS REAL) > 100;
@@ -267,8 +267,17 @@ FROM appointments
 GROUP BY city
 ORDER BY no_show_rate DESC;
 
+-- Appointments and no-show rate (%) for each specialty, highest rate first.
+-- physiotherapy 10.4% (9,074) · no specialty 12.1% (7,454) · 'sem especialidade' 22.8% is only 57 appointments
+SELECT specialty,
+       COUNT(*) AS total_appointments,
+       SUM(CASE WHEN no_show = 'yes' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS no_show_rate
+FROM appointments
+GROUP BY specialty
+ORDER BY no_show_rate DESC;
 
--- ---------- 8. Missing data and filters (IS NULL, AND, OR, IN, LIKE, BETWEEN) ----------
+
+-- ---------- 8. Missing data and filters (IS NULL, AND, OR, IN, LIKE, BETWEEN, COUNT variants) ----------
 
 -- Count the appointments where specialty is empty (NULL). -- 7,454
 SELECT COUNT(*)
@@ -316,6 +325,19 @@ SELECT COUNT(*)
 FROM appointments
 WHERE no_show = 'yes'
   AND (no_show_reason IS NULL OR TRIM(no_show_reason) = '');
+
+-- All appointments vs appointments with a city recorded.  -- 49,593 vs 44,412
+-- (COUNT(city) skips NULLs, so 5,181 appointments have no city.)
+SELECT COUNT(*), COUNT(city)
+FROM appointments;
+
+-- Number of different no-show reasons recorded.           -- 341
+SELECT COUNT(DISTINCT no_show_reason)
+FROM appointments;
+
+-- Number of different cities recorded (NULL not counted). -- 13
+SELECT COUNT(DISTINCT city)
+FROM appointments;
 
 
 -- ---------- 9. Fixing TEXT dates (substr and ||) ----------
@@ -379,3 +401,105 @@ SELECT DISTINCT
 FROM appointments
 ORDER BY sortable_date ASC
 LIMIT 5;
+
+
+-- ---------- 10. Duplicate checks (GROUP BY several columns + HAVING) ----------
+
+-- EX-073 · Appointments for each appointment_shift + no_show combination [solo]
+-- afternoon 25,103 no / 2,762 yes · morning 19,658 no / 2,070 yes (adds to 49,593)
+SELECT appointment_shift, no_show, COUNT(*)
+FROM appointments
+GROUP BY appointment_shift, no_show;
+
+-- EX-075 · City + no_show combinations with more than 2,000 appointments [solo]  -- 6 rows, all 'no'
+SELECT city, no_show, COUNT(*) AS total_appointments
+FROM appointments
+GROUP BY city, no_show
+HAVING COUNT(*) > 2000;
+
+-- EX-074 · Rows identical in all 26 columns (possible duplicate records) [guided]  -- 2,297 groups
+-- (No patient ID, and GROUP BY treats NULLs as equal, so not all are true duplicates.)
+SELECT COUNT(*)
+FROM appointments
+GROUP BY specialty, appointment_time, gender, appointment_date, no_show,
+         no_show_reason, disability, date_of_birth, entry_service_date, city,
+         icd, appointment_month, appointment_year, appointment_shift, age,
+         under_12_years_old, over_60_years_old, patient_needs_companion,
+         average_temp_day, average_rain_day, max_temp_day, max_rain_day,
+         rainy_day_before, storm_day_before, rain_intensity, heat_intensity
+HAVING COUNT(*) > 1;
+
+-- EX-076 · Possible double bookings: same date_of_birth, specialty, date and time [solo]  -- 3,368 groups
+SELECT COUNT(*)
+FROM appointments
+GROUP BY date_of_birth, specialty, appointment_date, appointment_time
+HAVING COUNT(*) > 1;
+
+-- EX-077 · Same check, leaving out appointments with no date_of_birth [guided]  -- 1,506 groups
+-- (1,862 of the 3,368 came only from missing birth dates.)
+SELECT COUNT(*)
+FROM appointments
+WHERE date_of_birth IS NOT NULL
+GROUP BY date_of_birth, specialty, appointment_date, appointment_time
+HAVING COUNT(*) > 1;
+
+
+-- ---------- 11. Cleaning text and missing values (TRIM, LOWER, REPLACE, COALESCE, CASE recoding) ----------
+
+-- EX-078 · Different no-show reasons before and after TRIM [solo]  -- 341 · 341
+select count(distinct no_show_reason) as original_no_show_reason,
+count(distinct trim(no_show_reason)) as trimmed_no_show_reason
+from appointments;
+
+-- EX-079 · Add a third column: different reasons after LOWER [solo]  -- 341 · 341 · 341
+-- (So the 341 spellings are not caused by extra spaces or capital letters.)
+select count(distinct no_show_reason) as original_no_show_reason,
+count(distinct trim(no_show_reason)) as trimmed_no_show_reason,
+COUNT(DISTINCT LOWER(NO_SHOW_REASON)) AS lowered_no_show_reason
+from appointments;
+
+-- EX-080 · Each city next to a cleaned name with 'BALN.' replaced by 'BALNEARIO' [guided]  -- 14 rows
+-- BALN. PIÇARRAS → BALNEARIO PIÇARRAS; all other cities unchanged.
+select DISTINCT city as original_city_name,
+replace (city,'BALN.', 'BALNEARIO') as cleaned_city
+from appointments;
+
+-- EX-081 · Same-day repeats: date_of_birth + gender + appointment_date more than once, missing birth dates left out [solo]  -- 11,057 groups
+-- (EX-082: same query, logged for IS NOT NULL.) Probably normal multi-therapy days, not errors.
+select count(*)
+from appointments
+where date_of_birth is not NULL
+group by date_of_birth,gender,appointment_date
+having count(*)>1;
+
+-- EX-083 · Each city next to a cleaned name with 'B.' replaced by 'BALNEARIO' [solo]  -- 14 rows
+-- B. CAMBORIU → BALNEARIO CAMBORIU; all other cities unchanged.
+select distinct city as original_city,
+replace (city,'B.','BALNEARIO' ) AS CLEANED_CITY
+FROM appointments;
+
+-- EX-084 · Appointments per specialty, empty specialty shown as 'no specialty' (COALESCE) [guided]  -- 9 rows · no specialty 7,454
+SELECT COALESCE(specialty, 'no specialty') AS specialty_clean,
+       COUNT(*) AS no_of_appointments
+FROM appointments
+GROUP BY COALESCE(specialty, 'no specialty');
+
+-- EX-085 · Appointments per specialty, NULL and 'sem especialidade' both shown as 'no specialty' (CASE + IS NULL + OR) [guided]  -- 8 rows · no specialty 7,511
+select case when specialty is null or specialty='sem especialidade' then  'no specialty'
+else specialty
+end as specialty_group,
+count(*) as appointment_count
+from appointments
+group by specialty_group;
+
+-- EX-086 · Each city next to a cleaned city, empty city shown as 'unknown' (COALESCE), 10 rows [solo]  -- 10 rows
+select city, coalesce(city,'unknown') as cleaned_city
+from appointments
+limit 10;
+
+-- EX-087 · Appointments per city, no city recorded as its own group (COALESCE + GROUP BY) [solo]  -- 14 rows · no city recorded 5,181 · adds to 49,593
+select coalesce(city,'no city recorded') as city_group,
+count(*) as appointment_count
+from appointments
+group by coalesce(city,'no city recorded')
+order by appointment_count desc;
