@@ -18,7 +18,7 @@ I'm learning SQL by answering real business questions on 49,593 appointment reco
   <tr><td><b>The question</b></td><td>Which appointments get missed, and what can the data honestly tell a clinic about why?</td></tr>
   <tr><td><b>The data</b></td><td>49,593 appointments · 26 columns · 20 Jun 2016 – 25 Feb 2022</td></tr>
   <tr><td><b>Tools</b></td><td>SQL (SQLite) in DB Browser for SQLite · Git and GitHub</td></tr>
-  <tr><td><b>Status</b></td><td>Exploration and data-quality checks in progress · 73 queries so far</td></tr>
+  <tr><td><b>Status</b></td><td>Exploration and data-quality checks in progress · 89 queries so far</td></tr>
   <tr><td><b>Headline so far</b></td><td>Among full years, the no-show rate nearly doubled: about 8% in 2017–18 → 15.1% in 2021 <i>(preliminary, still being checked)</i></td></tr>
 </table>
 
@@ -163,9 +163,14 @@ A query existing in [`sql/project01.sql`](sql/project01.sql) doesn't mean I can 
 | `TRIM`, `LOWER` | The 341 reason spellings stay 341 after cleaning | ✅ |
 | `REPLACE` | Turning `B.` into `BALNEARIO` in city names | ✅ |
 | `COALESCE` | Showing empty cities as their own group (cold retry still to do) | 🔄 |
-| `CASE WHEN` for recoding | NULL and 'sem especialidade' grouped as 'no specialty' | 🔄 |
+| `CASE WHEN` for recoding | NULL and 'sem especialidade' grouped as 'no specialty' (cold retry on attended appointments) | ✅ |
+| `CASE WHEN` + `LIKE` / `NOT LIKE` for free text | Grouping the 341 reason spellings into 5 groups | ✅ |
+| Mixing `AND` with `OR` (brackets) | Flag-versus-age contradictions | 🔄 |
+| Checking a flag against the real value | `over_60_years_old` versus age | ✅ |
+| Lookup tables (`CREATE TABLE … AS SELECT`) | Specialty and month lookup tables | ✅ |
 | Finding duplicates | Possible double bookings; same-day repeats | ✅ |
-| `JOIN`s | After building small lookup tables | ⬜ |
+| `INNER JOIN` | No-shows and no-show rate by month, in calendar order | 🔄 |
+| `LEFT JOIN` | Appointments with no matching specialty | ⬜ |
 | Subqueries and CTEs | Multi-step questions | ⬜ |
 | Window functions | Rankings and running totals | ⬜ |
 
@@ -301,7 +306,7 @@ Using only full years with enough appointments, the rate **nearly doubled**, fro
 | 2 | Basic queries: `SELECT`, `WHERE`, `ORDER BY`, `LIMIT` | ✅ Done |
 | 3 | Counting and grouping: `COUNT`, `GROUP BY`, `HAVING` | ✅ Done |
 | 4 | Data quality: missing values, text-stored data, free text | 🔄 In progress |
-| 5 | `JOIN`s, subqueries and CTEs | ⬜ Next |
+| 5 | `JOIN`s, subqueries and CTEs | 🔄 Started (lookup tables, first INNER JOIN) |
 | 6 | Window functions | ⬜ Planned |
 | 7 | Findings and recommendations | ⬜ Planned |
 | 8 | Dashboard | ⬜ Planned |
