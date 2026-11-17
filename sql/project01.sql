@@ -2,7 +2,7 @@
 -- Medical Appointments No-Show Analysis — my SQL queries
 -- Tool: DB Browser for SQLite · Table: appointments (49,593 rows)
 -- Data: Medical Appointments No-Show (Salazar, Mendeley Data v1), 20 Jun 2016 – 25 Feb 2022
--- Typed and run by me while learning SQL (7–9 Nov 2026) with an AI tutor.
+-- Typed and run by me while learning SQL (7–13 Nov 2026) with an AI tutor.
 -- Not every query is independent work. Written with guidance so far:
 --   * every no-show rate query in section 7 (no solo pass on rates yet)
 --   * the IS NOT NULL query in section 8 (fixed after a hint)
@@ -503,3 +503,177 @@ count(*) as appointment_count
 from appointments
 group by coalesce(city,'no city recorded')
 order by appointment_count desc;
+
+
+-- ---------- 12. Flag checks and grouping free text (CASE recoding, AND/OR with brackets, CASE + LIKE, NOT LIKE) ----------
+
+-- EX-088 · No-shows per specialty group, NULL and 'sem especialidade' both shown as 'no specialty' [guided]  -- 8 rows · no specialty 914 · adds to 4,832
+-- (CASE logic right first time; WHERE and GROUP BY added after hints.)
+SELECT case when specialty is null or specialty='sem especialidade' then 'no specialty'
+else specialty
+end as specialty_group,
+count(*) as no_shows
+from appointments 
+where no_show='yes'
+group by specialty_group;
+
+-- EX-089 · Flag check step 1: values of over_60_years_old [solo]  -- 0 = 46,033 · 1 = 3,560
+select over_60_years_old, count(*) as no_of_appointments
+from appointments
+group by over_60_years_old;
+
+-- EX-090 · Flag check step 2: does over_60_years_old agree with age? [solo]
+-- 0 / under 60 = 35,683 · 0 / unknown = 10,350 · 1 / 60 or more = 3,560 (adds to 49,593)
+-- (No disagreement where age is known; every missing age is flagged 0.)
+select over_60_years_old,
+	case when age is null then 'unknown'
+when CAST(age as real)<60 then  'under 60'
+else '60 or more'
+end as age_label, 
+count(*) as appointments
+from appointments
+group by over_60_years_old,age_label;
+
+-- EX-091 · Flag check step 3: appointments where over_60_years_old contradicts age (AND + OR with brackets) [guided]  -- 0
+-- (Signs were reversed first, which counted the agreeing rows: 39,243; fixed after a hint.)
+select count(*)
+from appointments 
+where (over_60_years_old=1 and CAST(age as real)<60)
+or (over_60_years_old=0 and cast(age as REAL)>=60);
+
+-- EX-092 · No-shows labelled 'transport' if the reason contains 'transporte', otherwise 'other' (CASE + LIKE) [solo]  -- transport 205 · other 4,627
+select case when no_show_reason like '%transporte%' then 'transport'
+else 'other'
+end as reason_category,
+count(*) as appointment_count
+from appointments
+where no_show='yes'
+group by reason_category;
+
+-- EX-093 · No-shows in 4 reason groups (transport, sick, no reason, other) [solo]  -- no reason 3,155 · other 1,217 · sick 255 · transport 205
+-- (NOTE: TRIM(no_show_reason) = ' ' can never match, it should be = ''. No effect here, because every
+--  missing reason is NULL. The label should read 'no reason recorded'. Both fixed in EX-096.)
+select case 
+	when no_show_reason like '%transporte%' then 'transport'
+	when no_show_reason like '%doente%' then 'sick'
+	when no_show_reason is null or trim(no_show_reason)=' ' then 'no_show_recorded'
+else 'other'
+end as reason_category,
+count(*) as appointment_count
+from appointments
+where no_show='yes'
+group by reason_category;
+
+-- EX-094 · The 10 most common 'other' no-show reasons (NOT LIKE) [solo]  -- 10 rows
+-- gripe 78 · desmarcado 78 · cancelado atendimento sexta feira 55 · atestado 49 · doença 47 ·
+-- remarcado 41 · yes atendeu 22 · febre 22 · viajando 17 · sem carro 17
+SELECT no_show_reason,
+COUNT(*) as reason_count
+from appointments
+where no_show='yes'
+and no_show_reason is not null
+and no_show_reason not like '%transporte%'
+and no_show_reason not like '%doente%'
+group by no_show_reason
+order by reason_count desc
+limit 10;
+
+-- EX-096 · Final reason groups with full keyword lists [guided]
+-- no reason 3,155 · other 753 · sick 471 · transport 244 · cancelled 209 (adds to 4,832)
+-- (My own first version is EX-095; the extra keywords and the '%remarc%' fix came from hints.
+--  'desmarcado' / 'remarcado' don't say who cancelled, so 'clinic cancelled' may include patients.)
+select case 
+	when no_show_reason like '%transporte%' or no_show_reason like '%transport%' or no_show_reason like '%carro%' then 'transport'
+	when no_show_reason like '%doente%' or no_show_reason  like '%doença%' or no_show_reason like '%gripe%' or no_show_reason like '%febre%' or no_show_reason like '%atestado%' then 'sick'
+	when no_show_reason is null or trim(no_show_reason)= '' then 'no_reason_recorded'
+	when no_show_reason like '%cancelado%' or no_show_reason like '%cancelada%' or no_show_reason like '%desmarc%' or no_show_reason like '%remarc%' then 'clinic cancelled'
+else 'other'
+end as reason_category,
+count(*) as appointment_count
+from appointments
+where no_show='yes'
+group by reason_category
+ORDER by appointment_count desc;
+
+-- EX-097 · Retry of EX-088 (cold, no example): ATTENDED appointments per specialty group,
+-- NULL and 'sem especialidade' both shown as 'no specialty' [solo]  -- 8 rows · no specialty 6,597 · adds to 44,761
+select case when specialty is null or specialty ='sem especialidade' then 'no specialty'
+else specialty
+end as speciality_group,
+count(*) as appointments
+from appointments
+where no_show='no'
+group by speciality_group
+order by appointments desc;
+
+-- EX-098 · Retry of EX-096 (cold, typed from memory ~40 min later): the 5 reason groups [solo]
+-- no reason 3,155 · other 753 · sick 471 · transport 244 · cancelled/rescheduled 209 (adds to 4,832)
+select case 
+	when no_show_reason like '%transporte%' or no_show_reason like '%transport%' or no_show_reason like '%carro%' then 'transport'
+	when no_show_reason like '%doente%' or no_show_reason  like '%doença%' or no_show_reason like '%gripe%' or no_show_reason like '%febre%' or no_show_reason like '%atestado%' then 'sick'
+	when no_show_reason is null or trim(no_show_reason) = '' then 'no_reason_recorded'
+	when no_show_reason like '%cancelado%' or no_show_reason like '%cancelada%' or no_show_reason like '%desmarc%' or no_show_reason like '%remarc%' then 'cancelled/rescheduled'
+else 'other'
+end as reason_category,
+count(*) as appointment_count
+from appointments
+where no_show='yes'
+group by reason_category
+order by appointment_count desc;
+
+
+-- ---------- 13. Lookup tables and JOINs (CREATE TABLE AS SELECT, INNER JOIN) ----------
+-- NOTE: the two CREATE TABLE queries add new tables to the database, so each one works only once.
+-- Running it again stops with "table already exists". To rebuild a table, first run: DROP TABLE table_name;
+
+-- EX-107 · Lookup table: each real specialty once ('sem especialidade' left out on purpose,
+-- because it means "no specialty") [solo]  -- 7 rows
+create table specialty_lookup as 
+select DISTINCT specialty
+from appointments
+where specialty is not null 
+and trim(specialty) <> ''
+and specialty <>'sem especialidade';
+
+-- Check the lookup table.  -- 7 rows
+select * from specialty_lookup;
+
+
+-- EX-108 · Lookup table: each month name with its month number, cut from appointment_date [guided]  -- 12 rows
+-- (First tries typed the numbers by hand and missed 'april', 'june', 'july'; fixed after hints.)
+create table month_lookup as
+select DISTINCT appointment_month,
+cast(substr(appointment_date,4,2)as INTEGER) as month_number
+from appointments
+where appointment_month is not null
+order by month_number asc;
+
+-- Check the lookup table in calendar order.  -- jan 1 ... dec 12
+select * from month_lookup
+order by month_number;
+
+-- EX-109 · First INNER JOIN: no-shows per month in calendar order [guided]  -- 12 rows · adds to 4,832
+-- jan 161 · feb 475 · mar 362 · april 426 · may 400 · june 659 · july 359 · aug 437 · sept 412 · oct 540 · nov 395 · dec 206
+-- (Counts, not rates: months have different numbers of appointments.)
+select month_lookup.appointment_month,
+month_lookup.month_number,
+count(*) as no_shows
+from appointments
+inner join month_lookup
+on appointments.appointment_month = month_lookup.appointment_month
+where no_show='yes'
+group by month_lookup.appointment_month,month_lookup.month_number
+order by month_lookup.month_number;
+
+-- EX-110 · Appointments and no-show rate (%) per month, using the same JOIN [solo; decimals fixed after a hint]
+-- jan 12.4 · feb 12.7 · mar 9.1 · april 10.8 · may 10.8 · june 13.2 · july 7.1 · aug 7.3 · sept 8.8 · oct 8.6 · nov 10.0 · dec 10.8
+-- (Totals add to 49,593. Preliminary: months mix years, e.g. jan/feb include 2022, jul-dec include 2016.)
+select month_lookup.appointment_month,
+month_lookup.month_number,
+count(*) as total_appointments,
+sum (case when no_show='yes' then 1 else 0  END)*100.0/count(*) as no_show_rate
+from appointments
+inner join month_lookup
+on appointments.appointment_month=month_lookup.appointment_month
+group by month_lookup.appointment_month,month_lookup.month_number
+order by month_lookup.month_number;
